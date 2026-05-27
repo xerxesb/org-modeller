@@ -134,6 +134,10 @@ export function Toolbar({ onShowDisciplines, showDisciplines }: Props) {
           >
             {exporting ? 'Exporting…' : 'Export PNG'}
           </button>
+
+          <span className="text-[10px] text-slate-400 font-mono pl-2 hidden sm:block select-none">
+            v{__APP_VERSION__} · © {new Date().getFullYear()} Xerxes Battiwalla
+          </span>
         </div>
       </div>
 
