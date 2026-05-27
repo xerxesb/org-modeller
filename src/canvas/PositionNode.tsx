@@ -19,7 +19,6 @@ export const PositionNode = memo(function PositionNode({ data, selected }: NodeP
 
   const directCount = direct.get(position.id) ?? 0;
   const indirectCount = indirect.get(position.id) ?? 0;
-  const isManual = position.manualPos !== null;
 
   const color = discipline?.color ?? '#94a3b8';
 
@@ -68,11 +67,6 @@ export const PositionNode = memo(function PositionNode({ data, selected }: NodeP
           )}
         </div>
 
-        {isManual && (
-          <div className="mt-1">
-            <span className="text-xs text-amber-500 font-medium">● manual</span>
-          </div>
-        )}
       </div>
 
       <Handle type="target" position={Position.Top} className="!w-2 !h-2 !bg-slate-300 !border-0" />

@@ -21,7 +21,7 @@ export function useReparentDrag() {
     const dragged = draggedIdRef.current;
     const descSet = descendantSetRef.current;
 
-    const intersecting = getIntersectingNodes(node, false);
+    const intersecting = getIntersectingNodes(node, true);
     const validTarget = intersecting.find(
       n => n.id !== dragged && !descSet.has(n.id)
     );
@@ -48,7 +48,7 @@ export function useReparentDrag() {
     if (!dragged) return;
 
     const descSet = descendantSetRef.current;
-    const intersecting = getIntersectingNodes(node, false);
+    const intersecting = getIntersectingNodes(node, true);
 
     // Clean up visual feedback
     document.querySelectorAll('.reparent-valid, .reparent-invalid').forEach(el => {
