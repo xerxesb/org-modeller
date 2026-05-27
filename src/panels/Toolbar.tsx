@@ -9,9 +9,11 @@ import { exportPNG } from '../io/pngExport';
 interface Props {
   onShowDisciplines: () => void;
   showDisciplines: boolean;
+  subtreeMoveMode: boolean;
+  onToggleSubtreeMove: () => void;
 }
 
-export function Toolbar({ onShowDisciplines, showDisciplines }: Props) {
+export function Toolbar({ onShowDisciplines, showDisciplines, subtreeMoveMode, onToggleSubtreeMove }: Props) {
   const positions = useOrgStore(s => s.positions);
   const positionOrder = useOrgStore(s => s.positionOrder);
   const disciplines = useOrgStore(s => s.disciplines);
@@ -105,6 +107,18 @@ export function Toolbar({ onShowDisciplines, showDisciplines }: Props) {
             className="text-xs font-medium rounded-lg px-3 py-1.5 transition-colors border bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
           >
             ↺ Auto-layout
+          </button>
+
+          <button
+            onClick={onToggleSubtreeMove}
+            title="When on, dragging a node moves its entire subtree with it"
+            className={`text-xs font-medium rounded-lg px-3 py-1.5 transition-colors border ${
+              subtreeMoveMode
+                ? 'bg-violet-500 text-white border-violet-500'
+                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            {subtreeMoveMode ? '⛶ Subtree: on' : '⛶ Subtree: off'}
           </button>
 
           <button

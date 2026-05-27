@@ -9,6 +9,7 @@ import { useOrgStore } from './store/orgStore';
 
 function AppContent() {
   const [showDisciplines, setShowDisciplines] = useState(false);
+  const [subtreeMoveMode, setSubtreeMoveMode] = useState(false);
   const selectedId = useOrgStore(s => s.selectedId);
   const positionOrder = useOrgStore(s => s.positionOrder);
   const undo = useStore(useOrgStore.temporal, s => s.undo);
@@ -33,6 +34,8 @@ function AppContent() {
       <Toolbar
         onShowDisciplines={() => setShowDisciplines(v => !v)}
         showDisciplines={showDisciplines}
+        subtreeMoveMode={subtreeMoveMode}
+        onToggleSubtreeMove={() => setSubtreeMoveMode(v => !v)}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -47,7 +50,7 @@ function AppContent() {
               </div>
             </div>
           )}
-          <OrgCanvas />
+          <OrgCanvas subtreeMoveMode={subtreeMoveMode} />
         </div>
 
         {/* Side panel */}

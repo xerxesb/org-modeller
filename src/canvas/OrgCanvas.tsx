@@ -12,14 +12,18 @@ import { useReparentDrag } from './useReparentDrag';
 
 const nodeTypes = { positionNode: PositionNode };
 
-export function OrgCanvas() {
+interface OrgCanvasProps {
+  subtreeMoveMode: boolean;
+}
+
+export function OrgCanvas({ subtreeMoveMode }: OrgCanvasProps) {
   const positions = useOrgStore(s => s.positions);
   const positionOrder = useOrgStore(s => s.positionOrder);
   const disciplines = useOrgStore(s => s.disciplines);
   const selectedId = useOrgStore(s => s.selectedId);
   const selectPosition = useOrgStore(s => s.selectPosition);
 
-  const { onNodeDragStart, onNodeDrag, onNodeDragStop } = useReparentDrag();
+  const { onNodeDragStart, onNodeDrag, onNodeDragStop } = useReparentDrag(subtreeMoveMode);
 
   const layoutMap = useMemo(
     () => computeLayout(positions, positionOrder),
