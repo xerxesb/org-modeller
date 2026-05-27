@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useStore } from 'zustand';
 import { useReactFlow } from '@xyflow/react';
 import { useOrgStore } from '../store/orgStore';
 import { exportCSV, downloadCSV } from '../io/csvExport';
@@ -24,6 +25,8 @@ export function Toolbar({ onShowDisciplines, showDisciplines }: Props) {
   const [exporting, setExporting] = useState(false);
 
   const flowInstance = useReactFlow();
+  const undo = useStore(useOrgStore.temporal, s => s.undo);
+  const canUndo = useStore(useOrgStore.temporal, s => s.pastStates.length > 0);
 
   const showToast = (type: 'error' | 'warning', message: string) => {
     setToast({ type, message });
@@ -102,6 +105,15 @@ export function Toolbar({ onShowDisciplines, showDisciplines }: Props) {
             className="text-xs font-medium rounded-lg px-3 py-1.5 transition-colors border bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
           >
             ↺ Auto-layout
+          </button>
+
+          <button
+            onClick={() => undo()}
+            disabled={!canUndo}
+            title="Undo last change (Ctrl+Z)"
+            className="text-xs font-medium rounded-lg px-3 py-1.5 transition-colors border bg-white text-slate-600 border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            ⎌ Undo
           </button>
         </div>
 

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { temporal } from 'zundo';
 import type { Discipline, OrgState, Position } from '../types';
 import { PRESET_DISCIPLINES } from './presets';
 import { newId } from '../utils/ids';
@@ -65,6 +66,7 @@ function buildSampleOrg(disciplines: Record<string, Discipline>) {
 }
 
 export const useOrgStore = create<OrgState & OrgActions>()(
+  temporal(
   persist(
     (set) => ({
       positions: SAMPLE_ORG.positions,
@@ -215,6 +217,21 @@ export const useOrgStore = create<OrgState & OrgActions>()(
     }),
     {
       name: 'org-modeller:v1',
+      partialize: (state) => {
+        // Don't persist selectedId
+        const { selectedId: _sel, ...rest } = state as OrgState & OrgActions;
+        return rest;
+      },
     }
-  )
-);
+  ),
+  {
+    // Only snapshot structural state, not UI selection
+    partialize: (state) => ({
+      positions: state.positions,
+      disciplines: state.disciplines,
+      positionOrder: state.positionOrder,
+      disciplineOrder: state.disciplineOrder,
+    }),
+    limit: 50,
+  }
+));

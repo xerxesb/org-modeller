@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useStore } from 'zustand';
 import { ReactFlowProvider } from '@xyflow/react';
 import { OrgCanvas } from './canvas/OrgCanvas';
 import { Inspector } from './panels/Inspector';
@@ -10,6 +11,20 @@ function AppContent() {
   const [showDisciplines, setShowDisciplines] = useState(false);
   const selectedId = useOrgStore(s => s.selectedId);
   const positionOrder = useOrgStore(s => s.positionOrder);
+  const undo = useStore(useOrgStore.temporal, s => s.undo);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        // Don't undo while typing in an input
+        if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+        e.preventDefault();
+        undo();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [undo]);
 
   const showPanel = showDisciplines || !!selectedId;
 
