@@ -33,6 +33,11 @@ function AppContent() {
             </div>
           )}
           <OrgCanvas />
+
+          {/* Subtle footer: version + copyright */}
+          <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] text-slate-400 pointer-events-none select-none font-mono z-10">
+            v{__APP_VERSION__} · © {new Date().getFullYear()} Xerxes Battiwalla
+          </div>
         </div>
 
         {/* Side panel */}
