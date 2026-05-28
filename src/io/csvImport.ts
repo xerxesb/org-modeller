@@ -1,12 +1,14 @@
 import Papa from 'papaparse';
-import type { Discipline, Position } from '../types';
+import type { Discipline, Label, Position } from '../types';
 import { newId } from '../utils/ids';
 
 export interface ImportResult {
   positions: Record<string, Position>;
   disciplines: Record<string, Discipline>;
+  labels: Record<string, Label>;
   positionOrder: string[];
   disciplineOrder: string[];
+  labelOrder: string[];
   warnings: string[];
 }
 
@@ -29,20 +31,33 @@ function parseColorHeader(line: string): Record<string, string> {
 export function importCSV(raw: string): ImportResult | ImportError {
   const lines = raw.split('\n');
   const colorMap: Record<string, string> = {};
-  const csvLines: string[] = [];
+  const positionLines: string[] = [];
+  const labelLines: string[] = [];
+  let section: 'positions' | 'labels' = 'positions';
 
   for (const line of lines) {
     const trimmed = line.trim();
     if (trimmed.startsWith('# discipline-colors:')) {
       Object.assign(colorMap, parseColorHeader(trimmed));
-    } else if (trimmed.startsWith('#') || trimmed === '') {
-      // skip
+      continue;
+    }
+    if (/^#\s*section:\s*labels/i.test(trimmed)) {
+      section = 'labels';
+      continue;
+    }
+    if (/^#\s*section:\s*positions/i.test(trimmed)) {
+      section = 'positions';
+      continue;
+    }
+    if (trimmed.startsWith('#') || trimmed === '') continue;
+    if (section === 'labels') {
+      labelLines.push(line);
     } else {
-      csvLines.push(line);
+      positionLines.push(line);
     }
   }
 
-  const parsed = Papa.parse<Record<string, string>>(csvLines.join('\n'), {
+  const parsed = Papa.parse<Record<string, string>>(positionLines.join('\n'), {
     header: true,
     skipEmptyLines: true,
   });
@@ -111,6 +126,17 @@ export function importCSV(raw: string): ImportResult | ImportError {
       ? { x: parseFloat(xRaw), y: parseFloat(yRaw) }
       : null;
 
+    const bandRaw = row['band']?.trim();
+    let band: number | null = null;
+    if (bandRaw) {
+      const parsed = parseInt(bandRaw, 10);
+      if (Number.isFinite(parsed) && parsed >= 2 && parsed <= 6) {
+        band = parsed;
+      } else {
+        warnings.push(`Row for "${id}": invalid band "${bandRaw}" (expected 2-6) — ignored`);
+      }
+    }
+
     positions[id] = {
       id,
       name: row['name']?.trim() ?? '',
@@ -119,6 +145,7 @@ export function importCSV(raw: string): ImportResult | ImportError {
       parentId: row['parent_id']?.trim() || null,
       manualPos,
       notes: row['notes']?.trim() ?? '',
+      band,
     };
     positionOrder.push(id);
   }
@@ -162,5 +189,36 @@ export function importCSV(raw: string): ImportResult | ImportError {
     return { error: `Cycle detected involving position "${cycleNode}"` };
   }
 
-  return { positions, disciplines, positionOrder, disciplineOrder, warnings };
+  const labels: Record<string, Label> = {};
+  const labelOrder: string[] = [];
+  if (labelLines.length > 0) {
+    const parsedLabels = Papa.parse<Record<string, string>>(labelLines.join('\n'), {
+      header: true,
+      skipEmptyLines: true,
+    });
+    if (parsedLabels.errors.length === 0) {
+      for (const row of parsedLabels.data) {
+        const id = row['id']?.trim() || newId('l');
+        if (labels[id]) continue;
+        const x = parseFloat(row['x'] ?? '');
+        const y = parseFloat(row['y'] ?? '');
+        const size = parseInt(row['size'] ?? '', 10);
+        labels[id] = {
+          id,
+          text: row['text'] ?? '',
+          pos: {
+            x: Number.isFinite(x) ? x : 0,
+            y: Number.isFinite(y) ? y : 0,
+          },
+          fontSize: Number.isFinite(size) ? size : 28,
+          color: row['color']?.trim() || '#1e293b',
+        };
+        labelOrder.push(id);
+      }
+    } else {
+      warnings.push(`Labels section parse error: ${parsedLabels.errors[0].message}`);
+    }
+  }
+
+  return { positions, disciplines, labels, positionOrder, disciplineOrder, labelOrder, warnings };
 }

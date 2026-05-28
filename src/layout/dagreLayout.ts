@@ -142,10 +142,27 @@ export function buildFlowElements(
   positions: Record<string, Position>,
   positionOrder: string[],
   layoutMap: Map<string, { x: number; y: number }>,
-  disciplines: Record<string, import('../types').Discipline>
+  disciplines: Record<string, import('../types').Discipline>,
+  labels: Record<string, import('../types').Label> = {},
+  labelOrder: string[] = []
 ): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
+
+  // Labels rendered first so they sit beneath position nodes in z-order
+  for (const id of labelOrder) {
+    const label = labels[id];
+    if (!label) continue;
+    nodes.push({
+      id,
+      type: 'labelNode',
+      position: label.pos,
+      data: { label },
+      draggable: true,
+      selectable: true,
+      // No fixed width/height — label sizes to its content
+    });
+  }
 
   for (const id of positionOrder) {
     const pos = positions[id];

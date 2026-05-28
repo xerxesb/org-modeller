@@ -12,12 +12,24 @@ export interface Position {
   parentId: string | null; // null = root
   manualPos: { x: number; y: number } | null;
   notes: string;
+  band: number | null; // 2-6, null = unset
+}
+
+export interface Label {
+  id: string;
+  text: string;
+  pos: { x: number; y: number };
+  fontSize: number;   // default 28
+  color: string;      // hex
 }
 
 export interface OrgState {
   positions: Record<string, Position>;
   disciplines: Record<string, Discipline>;
-  positionOrder: string[];   // stable insertion order
+  labels: Record<string, Label>;
+  positionOrder: string[];
   disciplineOrder: string[];
+  labelOrder: string[];
   selectedId: string | null;
+  selectedLabelId: string | null;
 }

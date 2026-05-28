@@ -96,6 +96,21 @@ export function Inspector() {
         </select>
       </div>
 
+      {/* Band */}
+      <div>
+        <label className="block text-xs font-medium text-slate-500 mb-1">Band</label>
+        <select
+          value={pos.band ?? ''}
+          onChange={e => updatePosition(selectedId, { band: e.target.value === '' ? null : parseInt(e.target.value, 10) })}
+          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+        >
+          <option value="">— none —</option>
+          {[2, 3, 4, 5, 6].map(b => (
+            <option key={b} value={b}>Band {b}</option>
+          ))}
+        </select>
+      </div>
+
       {/* Notes */}
       <div>
         <label className="block text-xs font-medium text-slate-500 mb-1">Notes</label>

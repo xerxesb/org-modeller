@@ -45,15 +45,20 @@ export const PositionNode = memo(function PositionNode({ data, selected }: NodeP
           {position.title || <span className="italic">No role set</span>}
         </div>
 
-        {/* Reports + discipline */}
+        {/* Reports + discipline + band */}
         <div className="flex items-center justify-between mt-2">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 min-w-0">
             {discipline && (
               <span
-                className="text-xs px-1.5 py-0.5 rounded-full text-white font-medium leading-none"
+                className="text-xs px-1.5 py-0.5 rounded-full text-white font-medium leading-none truncate"
                 style={{ backgroundColor: color }}
               >
                 {discipline.name}
+              </span>
+            )}
+            {position.band != null && (
+              <span className="text-xs px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold leading-none shrink-0">
+                B{position.band}
               </span>
             )}
           </div>

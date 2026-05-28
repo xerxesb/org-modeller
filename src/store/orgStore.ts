@@ -1,9 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { temporal } from 'zundo';
-import type { Discipline, OrgState, Position } from '../types';
+import type { Discipline, Label, OrgState, Position } from '../types';
 import { PRESET_DISCIPLINES } from './presets';
 import { newId } from '../utils/ids';
+import { buildChildrenMap, descendants } from '../utils/graph';
 
 interface OrgActions {
   // Positions
@@ -13,17 +14,25 @@ interface OrgActions {
   reparentPosition: (id: string, newParentId: string | null) => void;
   setManualPos: (id: string, pos: { x: number; y: number } | null) => void;
   resetAllManualPos: () => void;
+  resetSubtreeManualPos: (rootId: string) => void;
 
   // Disciplines
   addDiscipline: (name: string, color: string) => string;
   updateDiscipline: (id: string, patch: Partial<Omit<Discipline, 'id'>>) => void;
   deleteDiscipline: (id: string, replacementId: string | null) => void;
 
-  // Selection
+  // Labels
+  addLabel: (pos: { x: number; y: number }) => string;
+  updateLabel: (id: string, patch: Partial<Omit<Label, 'id'>>) => void;
+  setLabelPos: (id: string, pos: { x: number; y: number }) => void;
+  deleteLabel: (id: string) => void;
+
+  // Selection (positions and labels are mutually exclusive)
   selectPosition: (id: string | null) => void;
+  selectLabel: (id: string | null) => void;
 
   // Bulk replace (import)
-  replaceAll: (state: Pick<OrgState, 'positions' | 'disciplines' | 'positionOrder' | 'disciplineOrder'>) => void;
+  replaceAll: (state: Pick<OrgState, 'positions' | 'disciplines' | 'labels' | 'positionOrder' | 'disciplineOrder' | 'labelOrder'>) => void;
 }
 
 const initialDisciplines: Record<string, Discipline> = {};
@@ -45,7 +54,7 @@ function buildSampleOrg(disciplines: Record<string, Discipline>) {
 
   function add(name: string, title: string, disc: string, parentId: string | null): string {
     const id = newId('p');
-    positions[id] = { id, name, title, disciplineId: disciplineByName[disc] ?? null, parentId, manualPos: null, notes: '' };
+    positions[id] = { id, name, title, disciplineId: disciplineByName[disc] ?? null, parentId, manualPos: null, notes: '', band: null };
     positionOrder.push(id);
     return id;
   }
@@ -71,9 +80,12 @@ export const useOrgStore = create<OrgState & OrgActions>()(
     (set) => ({
       positions: SAMPLE_ORG.positions,
       disciplines: initialDisciplines,
+      labels: {},
       positionOrder: SAMPLE_ORG.positionOrder,
       disciplineOrder: initialDisciplineOrder,
+      labelOrder: [],
       selectedId: null,
+      selectedLabelId: null,
 
       addPosition: (parentId) => {
         const id = newId('p');
@@ -85,11 +97,13 @@ export const useOrgStore = create<OrgState & OrgActions>()(
           parentId,
           manualPos: null,
           notes: '',
+          band: null,
         };
         set(s => ({
           positions: { ...s.positions, [id]: pos },
           positionOrder: [...s.positionOrder, id],
           selectedId: id,
+          selectedLabelId: null,
         }));
         return id;
       },
@@ -109,7 +123,6 @@ export const useOrgStore = create<OrgState & OrgActions>()(
           if (!pos) return s;
 
           if (mode === 'subtree') {
-            // collect all descendants
             const toDelete = new Set<string>([id]);
             let changed = true;
             while (changed) {
@@ -130,7 +143,6 @@ export const useOrgStore = create<OrgState & OrgActions>()(
               selectedId: s.selectedId && toDelete.has(s.selectedId) ? null : s.selectedId,
             };
           } else {
-            // reparent children to grandparent
             const newPositions = { ...s.positions };
             for (const p of Object.values(newPositions)) {
               if (p.parentId === id) {
@@ -175,6 +187,22 @@ export const useOrgStore = create<OrgState & OrgActions>()(
         });
       },
 
+      resetSubtreeManualPos: (rootId) => {
+        set(s => {
+          if (!s.positions[rootId]) return s;
+          const childrenMap = buildChildrenMap(s.positions);
+          const toReset = descendants(rootId, childrenMap);
+          toReset.add(rootId);
+          const newPositions = { ...s.positions };
+          for (const id of toReset) {
+            if (newPositions[id]) {
+              newPositions[id] = { ...newPositions[id], manualPos: null };
+            }
+          }
+          return { positions: newPositions };
+        });
+      },
+
       addDiscipline: (name, color) => {
         const id = newId('d');
         set(s => ({
@@ -211,26 +239,75 @@ export const useOrgStore = create<OrgState & OrgActions>()(
         });
       },
 
-      selectPosition: (id) => set({ selectedId: id }),
+      addLabel: (pos) => {
+        const id = newId('l');
+        const label: Label = {
+          id,
+          text: 'Section title',
+          pos,
+          fontSize: 28,
+          color: '#1e293b',
+        };
+        set(s => ({
+          labels: { ...s.labels, [id]: label },
+          labelOrder: [...s.labelOrder, id],
+          selectedLabelId: id,
+          selectedId: null,
+        }));
+        return id;
+      },
 
-      replaceAll: (state) => set({ ...state, selectedId: null }),
+      updateLabel: (id, patch) => {
+        set(s => ({
+          labels: {
+            ...s.labels,
+            [id]: { ...s.labels[id], ...patch },
+          },
+        }));
+      },
+
+      setLabelPos: (id, pos) => {
+        set(s => ({
+          labels: {
+            ...s.labels,
+            [id]: { ...s.labels[id], pos },
+          },
+        }));
+      },
+
+      deleteLabel: (id) => {
+        set(s => {
+          const newLabels = { ...s.labels };
+          delete newLabels[id];
+          return {
+            labels: newLabels,
+            labelOrder: s.labelOrder.filter(lid => lid !== id),
+            selectedLabelId: s.selectedLabelId === id ? null : s.selectedLabelId,
+          };
+        });
+      },
+
+      selectPosition: (id) => set({ selectedId: id, selectedLabelId: null }),
+      selectLabel: (id) => set({ selectedLabelId: id, selectedId: null }),
+
+      replaceAll: (state) => set({ ...state, selectedId: null, selectedLabelId: null }),
     }),
     {
       name: 'org-modeller:v1',
       partialize: (state) => {
-        // Don't persist selectedId
-        const { selectedId: _sel, ...rest } = state as OrgState & OrgActions;
+        const { selectedId: _s, selectedLabelId: _l, ...rest } = state as OrgState & OrgActions;
         return rest;
       },
     }
   ),
   {
-    // Only snapshot structural state, not UI selection
     partialize: (state) => ({
       positions: state.positions,
       disciplines: state.disciplines,
+      labels: state.labels,
       positionOrder: state.positionOrder,
       disciplineOrder: state.disciplineOrder,
+      labelOrder: state.labelOrder,
     }),
     limit: 50,
   }

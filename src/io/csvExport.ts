@@ -1,13 +1,14 @@
 import Papa from 'papaparse';
-import type { Discipline, Position } from '../types';
+import type { Discipline, Label, Position } from '../types';
 
 export function exportCSV(
   positions: Record<string, Position>,
   positionOrder: string[],
   disciplines: Record<string, Discipline>,
-  disciplineOrder: string[]
+  disciplineOrder: string[],
+  labels: Record<string, Label> = {},
+  labelOrder: string[] = []
 ): string {
-  // Discipline colour header
   const colorEntries = disciplineOrder
     .map(did => disciplines[did])
     .filter(Boolean)
@@ -15,7 +16,7 @@ export function exportCSV(
     .join(';');
   const header = `# discipline-colors: ${colorEntries}\n`;
 
-  const rows = positionOrder
+  const positionRows = positionOrder
     .map(id => positions[id])
     .filter(Boolean)
     .map(pos => ({
@@ -23,17 +24,38 @@ export function exportCSV(
       name: pos.name,
       title: pos.title,
       discipline: pos.disciplineId ? (disciplines[pos.disciplineId]?.name ?? '') : '',
+      band: pos.band ?? '',
       parent_id: pos.parentId ?? '',
       notes: pos.notes,
       x: pos.manualPos?.x ?? '',
       y: pos.manualPos?.y ?? '',
     }));
 
-  const csv = Papa.unparse(rows, {
-    columns: ['id', 'name', 'title', 'discipline', 'parent_id', 'notes', 'x', 'y'],
+  const positionsCsv = Papa.unparse(positionRows, {
+    columns: ['id', 'name', 'title', 'discipline', 'band', 'parent_id', 'notes', 'x', 'y'],
   });
 
-  return header + csv;
+  let out = header + '# section: positions\n' + positionsCsv;
+
+  if (labelOrder.length > 0) {
+    const labelRows = labelOrder
+      .map(id => labels[id])
+      .filter(Boolean)
+      .map(l => ({
+        id: l.id,
+        text: l.text,
+        x: l.pos.x,
+        y: l.pos.y,
+        size: l.fontSize,
+        color: l.color,
+      }));
+    const labelsCsv = Papa.unparse(labelRows, {
+      columns: ['id', 'text', 'x', 'y', 'size', 'color'],
+    });
+    out += '\n\n# section: labels\n' + labelsCsv;
+  }
+
+  return out;
 }
 
 export function downloadCSV(content: string, filename?: string) {

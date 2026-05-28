@@ -13,6 +13,14 @@ export function useReparentDrag(subtreeMoveMode: boolean) {
   const origPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
 
   const onNodeDragStart: OnNodeDrag<Node> = useCallback((_evt, node) => {
+    // Labels are simple — no reparent / subtree logic
+    if (node.type === 'labelNode') {
+      draggedIdRef.current = node.id;
+      descendantSetRef.current = new Set();
+      origPositionsRef.current = new Map();
+      return;
+    }
+
     draggedIdRef.current = node.id;
     const childrenMap = buildChildrenMap(store.positions);
     descendantSetRef.current = descendants(node.id, childrenMap);
@@ -31,6 +39,9 @@ export function useReparentDrag(subtreeMoveMode: boolean) {
 
   const onNodeDrag: OnNodeDrag<Node> = useCallback((_evt, node) => {
     if (!draggedIdRef.current) return;
+    // Labels: nothing to do on drag (React Flow handles the visual move)
+    if (node.type === 'labelNode') return;
+
     const dragged = draggedIdRef.current;
     const descSet = descendantSetRef.current;
 
@@ -68,6 +79,13 @@ export function useReparentDrag(subtreeMoveMode: boolean) {
   const onNodeDragStop: OnNodeDrag<Node> = useCallback((_evt, node) => {
     const dragged = draggedIdRef.current;
     if (!dragged) return;
+
+    // Labels: just save the new position
+    if (node.type === 'labelNode') {
+      store.setLabelPos(dragged, { x: node.position.x, y: node.position.y });
+      draggedIdRef.current = null;
+      return;
+    }
 
     const descSet = descendantSetRef.current;
     const intersecting = getIntersectingNodes(node, true);

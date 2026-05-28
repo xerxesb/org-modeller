@@ -8,9 +8,10 @@ import {
 import { useOrgStore } from '../store/orgStore';
 import { computeLayout, buildFlowElements } from '../layout/dagreLayout';
 import { PositionNode } from './PositionNode';
+import { LabelNode } from './LabelNode';
 import { useReparentDrag } from './useReparentDrag';
 
-const nodeTypes = { positionNode: PositionNode };
+const nodeTypes = { positionNode: PositionNode, labelNode: LabelNode };
 
 interface OrgCanvasProps {
   subtreeMoveMode: boolean;
@@ -20,8 +21,12 @@ export function OrgCanvas({ subtreeMoveMode }: OrgCanvasProps) {
   const positions = useOrgStore(s => s.positions);
   const positionOrder = useOrgStore(s => s.positionOrder);
   const disciplines = useOrgStore(s => s.disciplines);
+  const labels = useOrgStore(s => s.labels);
+  const labelOrder = useOrgStore(s => s.labelOrder);
   const selectedId = useOrgStore(s => s.selectedId);
+  const selectedLabelId = useOrgStore(s => s.selectedLabelId);
   const selectPosition = useOrgStore(s => s.selectPosition);
+  const selectLabel = useOrgStore(s => s.selectLabel);
 
   const { onNodeDragStart, onNodeDrag, onNodeDragStop } = useReparentDrag(subtreeMoveMode);
 
@@ -34,22 +39,30 @@ export function OrgCanvas({ subtreeMoveMode }: OrgCanvasProps) {
   );
 
   const { nodes, edges } = useMemo(
-    () => buildFlowElements(positions, positionOrder, layoutMap, disciplines),
-    [positions, positionOrder, layoutMap, disciplines]
+    () => buildFlowElements(positions, positionOrder, layoutMap, disciplines, labels, labelOrder),
+    [positions, positionOrder, layoutMap, disciplines, labels, labelOrder]
   );
 
   const selectedNodes = useMemo(
-    () => nodes.map(n => ({ ...n, selected: n.id === selectedId })),
-    [nodes, selectedId]
+    () => nodes.map(n => ({
+      ...n,
+      selected: n.id === selectedId || n.id === selectedLabelId,
+    })),
+    [nodes, selectedId, selectedLabelId]
   );
 
-  const onNodeClick = useCallback((_: unknown, node: { id: string }) => {
-    selectPosition(node.id);
-  }, [selectPosition]);
+  const onNodeClick = useCallback((_: unknown, node: { id: string; type?: string }) => {
+    if (node.type === 'labelNode') {
+      selectLabel(node.id);
+    } else {
+      selectPosition(node.id);
+    }
+  }, [selectPosition, selectLabel]);
 
   const onPaneClick = useCallback(() => {
     selectPosition(null);
-  }, [selectPosition]);
+    selectLabel(null);
+  }, [selectPosition, selectLabel]);
 
   return (
     <ReactFlow
@@ -73,6 +86,7 @@ export function OrgCanvas({ subtreeMoveMode }: OrgCanvasProps) {
       <Controls />
       <MiniMap
         nodeColor={(n) => {
+          if (n.type === 'labelNode') return '#cbd5e1';
           const pos = positions[n.id];
           const disc = pos?.disciplineId ? disciplines[pos.disciplineId] : null;
           return disc?.color ?? '#94a3b8';

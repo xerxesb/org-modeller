@@ -19,7 +19,12 @@ export function Toolbar({ onShowDisciplines, showDisciplines, subtreeMoveMode, o
   const disciplines = useOrgStore(s => s.disciplines);
   const disciplineOrder = useOrgStore(s => s.disciplineOrder);
   const addPosition = useOrgStore(s => s.addPosition);
+  const addLabel = useOrgStore(s => s.addLabel);
+  const labels = useOrgStore(s => s.labels);
+  const labelOrder = useOrgStore(s => s.labelOrder);
   const resetAllManualPos = useOrgStore(s => s.resetAllManualPos);
+  const resetSubtreeManualPos = useOrgStore(s => s.resetSubtreeManualPos);
+  const selectedId = useOrgStore(s => s.selectedId);
   const replaceAll = useOrgStore(s => s.replaceAll);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -36,7 +41,7 @@ export function Toolbar({ onShowDisciplines, showDisciplines, subtreeMoveMode, o
   };
 
   const handleExportCSV = () => {
-    const content = exportCSV(positions, positionOrder, disciplines, disciplineOrder);
+    const content = exportCSV(positions, positionOrder, disciplines, disciplineOrder, labels, labelOrder);
     downloadCSV(content);
   };
 
@@ -73,8 +78,12 @@ export function Toolbar({ onShowDisciplines, showDisciplines, subtreeMoveMode, o
   };
 
   const handleResetLayout = () => {
-    resetAllManualPos();
-    setTimeout(() => flowInstance.fitView({ padding: 0.2, duration: 400 }), 50);
+    if (selectedId && positions[selectedId]) {
+      resetSubtreeManualPos(selectedId);
+    } else {
+      resetAllManualPos();
+      setTimeout(() => flowInstance.fitView({ padding: 0.2, duration: 400 }), 50);
+    }
   };
 
   return (
@@ -92,6 +101,20 @@ export function Toolbar({ onShowDisciplines, showDisciplines, subtreeMoveMode, o
           </button>
 
           <button
+            onClick={() => {
+              // Place new label near the centre of current viewport
+              const { x: vx, y: vy, zoom } = flowInstance.getViewport();
+              const w = window.innerWidth / 2;
+              const h = window.innerHeight / 2;
+              const pos = { x: (w - vx) / zoom, y: (h - vy) / zoom };
+              addLabel(pos);
+            }}
+            className="bg-violet-500 hover:bg-violet-600 text-white text-xs font-medium rounded-lg px-3 py-1.5 transition-colors"
+          >
+            + Add Label
+          </button>
+
+          <button
             onClick={onShowDisciplines}
             className={`text-xs font-medium rounded-lg px-3 py-1.5 transition-colors border ${
               showDisciplines
@@ -104,9 +127,10 @@ export function Toolbar({ onShowDisciplines, showDisciplines, subtreeMoveMode, o
 
           <button
             onClick={handleResetLayout}
+            title={selectedId ? 'Reset layout for selected node and its subtree' : 'Reset layout for all nodes'}
             className="text-xs font-medium rounded-lg px-3 py-1.5 transition-colors border bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
           >
-            ↺ Auto-layout
+            {selectedId ? '↺ Auto-layout subtree' : '↺ Auto-layout'}
           </button>
 
           <button
