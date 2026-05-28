@@ -25,8 +25,10 @@ export function OrgCanvas({ subtreeMoveMode }: OrgCanvasProps) {
   const labelOrder = useOrgStore(s => s.labelOrder);
   const selectedId = useOrgStore(s => s.selectedId);
   const selectedLabelId = useOrgStore(s => s.selectedLabelId);
+  const multiSelectedIds = useOrgStore(s => s.multiSelectedIds);
   const selectPosition = useOrgStore(s => s.selectPosition);
   const selectLabel = useOrgStore(s => s.selectLabel);
+  const togglePositionMultiSelect = useOrgStore(s => s.togglePositionMultiSelect);
 
   const { onNodeDragStart, onNodeDrag, onNodeDragStop } = useReparentDrag(subtreeMoveMode);
 
@@ -43,21 +45,26 @@ export function OrgCanvas({ subtreeMoveMode }: OrgCanvasProps) {
     [positions, positionOrder, layoutMap, disciplines, labels, labelOrder]
   );
 
+  const multiSet = useMemo(() => new Set(multiSelectedIds), [multiSelectedIds]);
   const selectedNodes = useMemo(
     () => nodes.map(n => ({
       ...n,
-      selected: n.id === selectedId || n.id === selectedLabelId,
+      selected: n.id === selectedId || n.id === selectedLabelId || multiSet.has(n.id),
     })),
-    [nodes, selectedId, selectedLabelId]
+    [nodes, selectedId, selectedLabelId, multiSet]
   );
 
-  const onNodeClick = useCallback((_: unknown, node: { id: string; type?: string }) => {
+  const onNodeClick = useCallback((event: React.MouseEvent, node: { id: string; type?: string }) => {
     if (node.type === 'labelNode') {
       selectLabel(node.id);
+      return;
+    }
+    if (event.shiftKey || event.metaKey || event.ctrlKey) {
+      togglePositionMultiSelect(node.id);
     } else {
       selectPosition(node.id);
     }
-  }, [selectPosition, selectLabel]);
+  }, [selectPosition, selectLabel, togglePositionMultiSelect]);
 
   const onPaneClick = useCallback(() => {
     selectPosition(null);

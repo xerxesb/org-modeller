@@ -1,8 +1,8 @@
 import type { Node, Edge } from '@xyflow/react';
 import type { Position } from '../types';
 
-const NODE_WIDTH = 240;
-const NODE_HEIGHT = 90;
+export const NODE_WIDTH = 240;
+export const NODE_HEIGHT = 90;
 const COL_SPACING = 40;    // horizontal gap between sibling subtrees
 const RANK_SPACING = 80;   // vertical gap parent → children area
 const ROW_SPACING = 24;    // vertical gap between grid rows

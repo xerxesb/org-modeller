@@ -5,6 +5,9 @@ import type { Discipline, Label, OrgState, Position } from '../types';
 import { PRESET_DISCIPLINES } from './presets';
 import { newId } from '../utils/ids';
 import { buildChildrenMap, descendants } from '../utils/graph';
+import { computeLayout, NODE_WIDTH, NODE_HEIGHT } from '../layout/dagreLayout';
+
+export type AlignMode = 'top' | 'bottom' | 'left' | 'right' | 'hcenter' | 'vcenter';
 
 interface OrgActions {
   // Positions
@@ -30,6 +33,11 @@ interface OrgActions {
   // Selection (positions and labels are mutually exclusive)
   selectPosition: (id: string | null) => void;
   selectLabel: (id: string | null) => void;
+  togglePositionMultiSelect: (id: string) => void;
+  clearMultiSelect: () => void;
+
+  // Multi-node alignment
+  alignSelectedNodes: (ids: string[], mode: AlignMode) => void;
 
   // Bulk replace (import)
   replaceAll: (state: Pick<OrgState, 'positions' | 'disciplines' | 'labels' | 'positionOrder' | 'disciplineOrder' | 'labelOrder'>) => void;
@@ -86,6 +94,7 @@ export const useOrgStore = create<OrgState & OrgActions>()(
       labelOrder: [],
       selectedId: null,
       selectedLabelId: null,
+      multiSelectedIds: [],
 
       addPosition: (parentId) => {
         const id = newId('p');
@@ -287,15 +296,96 @@ export const useOrgStore = create<OrgState & OrgActions>()(
         });
       },
 
-      selectPosition: (id) => set({ selectedId: id, selectedLabelId: null }),
-      selectLabel: (id) => set({ selectedLabelId: id, selectedId: null }),
+      selectPosition: (id) => set({ selectedId: id, selectedLabelId: null, multiSelectedIds: [] }),
+      selectLabel: (id) => set({ selectedLabelId: id, selectedId: null, multiSelectedIds: [] }),
 
-      replaceAll: (state) => set({ ...state, selectedId: null, selectedLabelId: null }),
+      togglePositionMultiSelect: (id) => {
+        set(s => {
+          if (!s.positions[id]) return s;
+          let next = s.multiSelectedIds;
+          // Promote current single-selected node into the set
+          if (next.length === 0 && s.selectedId && s.selectedId !== id) {
+            next = [s.selectedId];
+          }
+          next = next.includes(id) ? next.filter(i => i !== id) : [...next, id];
+
+          if (next.length === 0) {
+            return { multiSelectedIds: [], selectedId: null, selectedLabelId: null };
+          }
+          if (next.length === 1) {
+            return { multiSelectedIds: [], selectedId: next[0], selectedLabelId: null };
+          }
+          return { multiSelectedIds: next, selectedId: null, selectedLabelId: null };
+        });
+      },
+
+      clearMultiSelect: () => set({ multiSelectedIds: [] }),
+
+      alignSelectedNodes: (ids, mode) => {
+        set(s => {
+          if (ids.length < 2) return s;
+          const valid = ids.filter(id => s.positions[id]);
+          if (valid.length < 2) return s;
+
+          const layoutMap = computeLayout(s.positions, s.positionOrder);
+
+          const items = valid.map(id => {
+            const pos = s.positions[id];
+            const x = pos.manualPos?.x ?? layoutMap.get(id)?.x ?? 0;
+            const y = pos.manualPos?.y ?? layoutMap.get(id)?.y ?? 0;
+            return { id, pos, x, y };
+          });
+
+          const ys = items.map(i => i.y);
+          const xs = items.map(i => i.x);
+
+          let targetX: number | null = null;
+          let targetY: number | null = null;
+          switch (mode) {
+            case 'top':
+              targetY = Math.min(...ys);
+              break;
+            case 'bottom':
+              targetY = Math.max(...ys.map(y => y + NODE_HEIGHT)) - NODE_HEIGHT;
+              break;
+            case 'left':
+              targetX = Math.min(...xs);
+              break;
+            case 'right':
+              targetX = Math.max(...xs.map(x => x + NODE_WIDTH)) - NODE_WIDTH;
+              break;
+            case 'hcenter': {
+              // Align vertical centres → same X for each centre
+              const centres = items.map(i => i.x + NODE_WIDTH / 2);
+              const avg = centres.reduce((a, b) => a + b, 0) / centres.length;
+              targetX = avg - NODE_WIDTH / 2;
+              break;
+            }
+            case 'vcenter': {
+              // Align horizontal centres → same Y for each centre
+              const centres = items.map(i => i.y + NODE_HEIGHT / 2);
+              const avg = centres.reduce((a, b) => a + b, 0) / centres.length;
+              targetY = avg - NODE_HEIGHT / 2;
+              break;
+            }
+          }
+
+          const newPositions = { ...s.positions };
+          for (const item of items) {
+            const x = targetX != null ? targetX : item.x;
+            const y = targetY != null ? targetY : item.y;
+            newPositions[item.id] = { ...item.pos, manualPos: { x, y } };
+          }
+          return { positions: newPositions };
+        });
+      },
+
+      replaceAll: (state) => set({ ...state, selectedId: null, selectedLabelId: null, multiSelectedIds: [] }),
     }),
     {
       name: 'org-modeller:v1',
       partialize: (state) => {
-        const { selectedId: _s, selectedLabelId: _l, ...rest } = state as OrgState & OrgActions;
+        const { selectedId: _s, selectedLabelId: _l, multiSelectedIds: _m, ...rest } = state as OrgState & OrgActions;
         return rest;
       },
     }

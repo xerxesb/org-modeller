@@ -5,6 +5,7 @@ import { OrgCanvas } from './canvas/OrgCanvas';
 import { Inspector } from './panels/Inspector';
 import { LabelInspector } from './panels/LabelInspector';
 import { DisciplineManager } from './panels/DisciplineManager';
+import { AlignmentPanel } from './panels/AlignmentPanel';
 import { Toolbar } from './panels/Toolbar';
 import { useOrgStore } from './store/orgStore';
 
@@ -13,6 +14,7 @@ function AppContent() {
   const [subtreeMoveMode, setSubtreeMoveMode] = useState(false);
   const selectedId = useOrgStore(s => s.selectedId);
   const selectedLabelId = useOrgStore(s => s.selectedLabelId);
+  const multiSelectedCount = useOrgStore(s => s.multiSelectedIds.length);
   const positionOrder = useOrgStore(s => s.positionOrder);
   const undo = useStore(useOrgStore.temporal, s => s.undo);
 
@@ -29,7 +31,7 @@ function AppContent() {
     return () => window.removeEventListener('keydown', handler);
   }, [undo]);
 
-  const showPanel = showDisciplines || !!selectedId || !!selectedLabelId;
+  const showPanel = showDisciplines || !!selectedId || !!selectedLabelId || multiSelectedCount >= 2;
 
   return (
     <div className="flex flex-col h-screen">
@@ -60,6 +62,8 @@ function AppContent() {
           <div className="w-72 bg-white border-l border-slate-200 shadow-sm overflow-y-auto shrink-0">
             {showDisciplines ? (
               <DisciplineManager />
+            ) : multiSelectedCount >= 2 ? (
+              <AlignmentPanel />
             ) : selectedLabelId ? (
               <LabelInspector />
             ) : selectedId ? (

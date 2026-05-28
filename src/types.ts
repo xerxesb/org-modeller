@@ -32,4 +32,5 @@ export interface OrgState {
   labelOrder: string[];
   selectedId: string | null;
   selectedLabelId: string | null;
+  multiSelectedIds: string[]; // 2+ position nodes selected for bulk actions
 }
