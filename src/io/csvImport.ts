@@ -146,6 +146,7 @@ export function importCSV(raw: string): ImportResult | ImportError {
       manualPos,
       notes: row['notes']?.trim() ?? '',
       band,
+      isNew: row['is_new']?.trim().toLowerCase() === 'true',
     };
     positionOrder.push(id);
   }

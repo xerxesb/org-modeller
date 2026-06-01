@@ -13,6 +13,7 @@ export interface Position {
   manualPos: { x: number; y: number } | null;
   notes: string;
   band: number | null; // 2-6, null = unset
+  isNew: boolean;      // highlight as a newly created role
 }
 
 export interface Label {

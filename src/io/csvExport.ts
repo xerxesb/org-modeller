@@ -25,6 +25,7 @@ export function exportCSV(
       title: pos.title,
       discipline: pos.disciplineId ? (disciplines[pos.disciplineId]?.name ?? '') : '',
       band: pos.band ?? '',
+      is_new: pos.isNew ? 'true' : '',
       parent_id: pos.parentId ?? '',
       notes: pos.notes,
       x: pos.manualPos?.x ?? '',
@@ -32,7 +33,7 @@ export function exportCSV(
     }));
 
   const positionsCsv = Papa.unparse(positionRows, {
-    columns: ['id', 'name', 'title', 'discipline', 'band', 'parent_id', 'notes', 'x', 'y'],
+    columns: ['id', 'name', 'title', 'discipline', 'band', 'is_new', 'parent_id', 'notes', 'x', 'y'],
   });
 
   let out = header + '# section: positions\n' + positionsCsv;

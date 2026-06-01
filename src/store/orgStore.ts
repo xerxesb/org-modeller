@@ -62,7 +62,7 @@ function buildSampleOrg(disciplines: Record<string, Discipline>) {
 
   function add(name: string, title: string, disc: string, parentId: string | null): string {
     const id = newId('p');
-    positions[id] = { id, name, title, disciplineId: disciplineByName[disc] ?? null, parentId, manualPos: null, notes: '', band: null };
+    positions[id] = { id, name, title, disciplineId: disciplineByName[disc] ?? null, parentId, manualPos: null, notes: '', band: null, isNew: false };
     positionOrder.push(id);
     return id;
   }
@@ -107,6 +107,7 @@ export const useOrgStore = create<OrgState & OrgActions>()(
           manualPos: null,
           notes: '',
           band: null,
+          isNew: false,
         };
         set(s => ({
           positions: { ...s.positions, [id]: pos },

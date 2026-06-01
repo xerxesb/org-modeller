@@ -21,13 +21,26 @@ export const PositionNode = memo(function PositionNode({ data, selected }: NodeP
   const indirectCount = indirect.get(position.id) ?? 0;
 
   const color = discipline?.color ?? '#94a3b8';
+  const isNew = position.isNew ?? false;
+
+  let borderClass: string;
+  if (selected) {
+    borderClass = 'border-blue-500 shadow-md';
+  } else if (isNew) {
+    borderClass = 'border-emerald-400 shadow-[0_0_0_1px_#34d399]';
+  } else {
+    borderClass = 'border-slate-200';
+  }
 
   return (
-    <div
-      className={`bg-white rounded-xl shadow-sm border-2 overflow-hidden w-60 ${
-        selected ? 'border-blue-500 shadow-md' : 'border-slate-200'
-      }`}
-    >
+    <div className={`relative bg-white rounded-xl shadow-sm border-2 overflow-hidden w-60 ${borderClass}`}>
+      {/* "New" badge — top-right corner */}
+      {isNew && (
+        <span className="absolute top-1.5 right-2 text-[9px] font-bold uppercase tracking-wide text-emerald-600 bg-emerald-50 border border-emerald-200 rounded px-1 py-0.5 leading-none z-10">
+          New
+        </span>
+      )}
+
       {/* Discipline colour band */}
       <div
         className="h-1.5 w-full"
@@ -36,7 +49,7 @@ export const PositionNode = memo(function PositionNode({ data, selected }: NodeP
 
       <div className="px-3 py-2.5">
         {/* Name */}
-        <div className="font-semibold text-slate-800 text-sm leading-tight truncate">
+        <div className={`font-semibold text-sm leading-tight truncate ${isNew ? 'pr-10' : ''} ${position.name ? 'text-slate-800' : ''}`}>
           {position.name || <span className="italic text-slate-400">Vacant</span>}
         </div>
 
@@ -71,7 +84,6 @@ export const PositionNode = memo(function PositionNode({ data, selected }: NodeP
             </div>
           )}
         </div>
-
       </div>
 
       <Handle type="target" position={Position.Top} className="!w-2 !h-2 !bg-slate-300 !border-0" />
