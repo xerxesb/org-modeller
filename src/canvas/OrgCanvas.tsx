@@ -9,9 +9,10 @@ import { useOrgStore } from '../store/orgStore';
 import { computeLayout, buildFlowElements } from '../layout/dagreLayout';
 import { PositionNode } from './PositionNode';
 import { LabelNode } from './LabelNode';
+import { DragOutlineNode } from './DragOutlineNode';
 import { useReparentDrag } from './useReparentDrag';
 
-const nodeTypes = { positionNode: PositionNode, labelNode: LabelNode };
+const nodeTypes = { positionNode: PositionNode, labelNode: LabelNode, dragOutline: DragOutlineNode };
 
 interface OrgCanvasProps {
   subtreeMoveMode: boolean;
@@ -30,7 +31,7 @@ export function OrgCanvas({ subtreeMoveMode }: OrgCanvasProps) {
   const selectLabel = useOrgStore(s => s.selectLabel);
   const togglePositionMultiSelect = useOrgStore(s => s.togglePositionMultiSelect);
 
-  const { onNodeDragStart, onNodeDrag, onNodeDragStop } = useReparentDrag(subtreeMoveMode);
+  const { onNodeDragStart, onNodeDrag, onNodeDragStop, dragOutline } = useReparentDrag(subtreeMoveMode);
 
   const layoutMap = useMemo(
     () => computeLayout(positions, positionOrder),
@@ -54,6 +55,21 @@ export function OrgCanvas({ subtreeMoveMode }: OrgCanvasProps) {
     [nodes, selectedId, selectedLabelId, multiSet]
   );
 
+  const renderNodes = useMemo(() => {
+    if (!dragOutline) return selectedNodes;
+    const PAD = 12;
+    const outlineNode = {
+      id: '__drag_outline__',
+      type: 'dragOutline',
+      position: { x: dragOutline.x - PAD, y: dragOutline.y - PAD },
+      data: { width: dragOutline.width + PAD * 2, height: dragOutline.height + PAD * 2 },
+      draggable: false,
+      selectable: false,
+      zIndex: -1,
+    };
+    return [outlineNode, ...selectedNodes];
+  }, [selectedNodes, dragOutline]);
+
   const onNodeClick = useCallback((event: React.MouseEvent, node: { id: string; type?: string }) => {
     if (node.type === 'labelNode') {
       selectLabel(node.id);
@@ -73,7 +89,7 @@ export function OrgCanvas({ subtreeMoveMode }: OrgCanvasProps) {
 
   return (
     <ReactFlow
-      nodes={selectedNodes}
+      nodes={renderNodes}
       edges={edges}
       nodeTypes={nodeTypes}
       onNodeClick={onNodeClick}
