@@ -28,14 +28,15 @@ export function Toolbar({ onShowDisciplines, showDisciplines, subtreeMoveMode, o
   const replaceAll = useOrgStore(s => s.replaceAll);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [toast, setToast] = useState<{ type: 'error' | 'warning'; message: string } | null>(null);
+  const [toast, setToast] = useState<{ type: 'error' | 'warning' | 'success'; message: string } | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [copiedAt, setCopiedAt] = useState(0);
 
   const flowInstance = useReactFlow();
   const undo = useStore(useOrgStore.temporal, s => s.undo);
   const canUndo = useStore(useOrgStore.temporal, s => s.pastStates.length > 0);
 
-  const showToast = (type: 'error' | 'warning', message: string) => {
+  const showToast = (type: 'error' | 'warning' | 'success', message: string) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 5000);
   };
@@ -43,6 +44,18 @@ export function Toolbar({ onShowDisciplines, showDisciplines, subtreeMoveMode, o
   const handleExportCSV = () => {
     const content = exportCSV(positions, positionOrder, disciplines, disciplineOrder, labels, labelOrder);
     downloadCSV(content);
+  };
+
+  const handleCopyCSV = async () => {
+    const content = exportCSV(positions, positionOrder, disciplines, disciplineOrder, labels, labelOrder);
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedAt(Date.now());
+      setTimeout(() => setCopiedAt(c => (Date.now() - c >= 1500 ? 0 : c)), 1600);
+      showToast('success', 'CSV copied to clipboard');
+    } catch (err) {
+      showToast('error', `Copy failed: ${err}`);
+    }
   };
 
   const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -157,6 +170,18 @@ export function Toolbar({ onShowDisciplines, showDisciplines, subtreeMoveMode, o
 
         <div className="flex items-center gap-1.5 ml-auto flex-wrap">
           <button
+            onClick={handleCopyCSV}
+            title="Copy CSV to clipboard"
+            className={`text-xs font-medium rounded-lg px-3 py-1.5 transition-colors border ${
+              copiedAt
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            {copiedAt ? '✓ Copied' : '⧉ Copy CSV'}
+          </button>
+
+          <button
             onClick={handleExportCSV}
             className="text-xs font-medium rounded-lg px-3 py-1.5 transition-colors border bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
           >
@@ -197,10 +222,14 @@ export function Toolbar({ onShowDisciplines, showDisciplines, subtreeMoveMode, o
           className={`fixed bottom-4 right-4 max-w-sm rounded-xl shadow-lg px-4 py-3 text-sm z-50 ${
             toast.type === 'error'
               ? 'bg-red-500 text-white'
-              : 'bg-amber-400 text-amber-900'
+              : toast.type === 'success'
+                ? 'bg-emerald-500 text-white'
+                : 'bg-amber-400 text-amber-900'
           }`}
         >
-          <div className="font-semibold mb-0.5">{toast.type === 'error' ? 'Error' : 'Warning'}</div>
+          <div className="font-semibold mb-0.5">
+            {toast.type === 'error' ? 'Error' : toast.type === 'success' ? 'Done' : 'Warning'}
+          </div>
           <div>{toast.message}</div>
         </div>
       )}
