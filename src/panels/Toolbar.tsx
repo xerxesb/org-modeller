@@ -1,10 +1,9 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useStore } from 'zustand';
 import { useReactFlow } from '@xyflow/react';
 import { useOrgStore } from '../store/orgStore';
-import { exportCSV, downloadCSV } from '../io/csvExport';
-import { importCSV } from '../io/csvImport';
 import { exportPNG } from '../io/pngExport';
+import { CsvEditor } from './CsvEditor';
 
 interface Props {
   onShowDisciplines: () => void;
@@ -15,22 +14,15 @@ interface Props {
 
 export function Toolbar({ onShowDisciplines, showDisciplines, subtreeMoveMode, onToggleSubtreeMove }: Props) {
   const positions = useOrgStore(s => s.positions);
-  const positionOrder = useOrgStore(s => s.positionOrder);
-  const disciplines = useOrgStore(s => s.disciplines);
-  const disciplineOrder = useOrgStore(s => s.disciplineOrder);
   const addPosition = useOrgStore(s => s.addPosition);
   const addLabel = useOrgStore(s => s.addLabel);
-  const labels = useOrgStore(s => s.labels);
-  const labelOrder = useOrgStore(s => s.labelOrder);
   const resetAllManualPos = useOrgStore(s => s.resetAllManualPos);
   const resetSubtreeManualPos = useOrgStore(s => s.resetSubtreeManualPos);
   const selectedId = useOrgStore(s => s.selectedId);
-  const replaceAll = useOrgStore(s => s.replaceAll);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [toast, setToast] = useState<{ type: 'error' | 'warning' | 'success'; message: string } | null>(null);
   const [exporting, setExporting] = useState(false);
-  const [copiedAt, setCopiedAt] = useState(0);
+  const [showCsvEditor, setShowCsvEditor] = useState(false);
 
   const flowInstance = useReactFlow();
   const undo = useStore(useOrgStore.temporal, s => s.undo);
@@ -39,44 +31,6 @@ export function Toolbar({ onShowDisciplines, showDisciplines, subtreeMoveMode, o
   const showToast = (type: 'error' | 'warning' | 'success', message: string) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 5000);
-  };
-
-  const handleExportCSV = () => {
-    const content = exportCSV(positions, positionOrder, disciplines, disciplineOrder, labels, labelOrder);
-    downloadCSV(content);
-  };
-
-  const handleCopyCSV = async () => {
-    const content = exportCSV(positions, positionOrder, disciplines, disciplineOrder, labels, labelOrder);
-    try {
-      await navigator.clipboard.writeText(content);
-      setCopiedAt(Date.now());
-      setTimeout(() => setCopiedAt(c => (Date.now() - c >= 1500 ? 0 : c)), 1600);
-      showToast('success', 'CSV copied to clipboard');
-    } catch (err) {
-      showToast('error', `Copy failed: ${err}`);
-    }
-  };
-
-  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const raw = reader.result as string;
-      const result = importCSV(raw);
-      if ('error' in result) {
-        showToast('error', result.error);
-      } else {
-        replaceAll(result);
-        if (result.warnings.length > 0) {
-          showToast('warning', result.warnings.join(' | '));
-        }
-        setTimeout(() => flowInstance.fitView({ padding: 0.2, duration: 400 }), 100);
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
   };
 
   const handleExportPNG = async () => {
@@ -170,37 +124,12 @@ export function Toolbar({ onShowDisciplines, showDisciplines, subtreeMoveMode, o
 
         <div className="flex items-center gap-1.5 ml-auto flex-wrap">
           <button
-            onClick={handleCopyCSV}
-            title="Copy CSV to clipboard"
-            className={`text-xs font-medium rounded-lg px-3 py-1.5 transition-colors border ${
-              copiedAt
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            {copiedAt ? '✓ Copied' : '⧉ Copy CSV'}
-          </button>
-
-          <button
-            onClick={handleExportCSV}
+            onClick={() => setShowCsvEditor(true)}
+            title="Open the CSV editor to paste, edit, copy, download or load CSV data"
             className="text-xs font-medium rounded-lg px-3 py-1.5 transition-colors border bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
           >
-            Export CSV
+            ✎ Edit Data
           </button>
-
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="text-xs font-medium rounded-lg px-3 py-1.5 transition-colors border bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-          >
-            Import CSV
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv,text/csv"
-            className="hidden"
-            onChange={handleImportCSV}
-          />
 
           <button
             onClick={handleExportPNG}
@@ -215,6 +144,8 @@ export function Toolbar({ onShowDisciplines, showDisciplines, subtreeMoveMode, o
           </span>
         </div>
       </div>
+
+      <CsvEditor isOpen={showCsvEditor} onClose={() => setShowCsvEditor(false)} />
 
       {/* Toast */}
       {toast && (
